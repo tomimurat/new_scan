@@ -14,7 +14,7 @@ GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
 # 📡 Configurar Gemini
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel("models/gemini-1.5-pro-002")
+model = genai.GenerativeModel("models/gemini-1.5-flash-001")
 
 st.title("📄 Lector Inteligente de Facturas usando OCR.space + Gemini")
 
