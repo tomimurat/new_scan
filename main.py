@@ -50,12 +50,21 @@ def mindee_ocr_api(image_bytes):
 def extract_text_from_mindee_response(response_json):
     try:
         data = json.loads(response_json)
-        fields = data.get("document", {}).get("inference", {}).get("prediction", {})
-        texto = "\n".join([f"{key}: {value.get('value', '')}" for key, value in fields.items()])
+        prediction = data.get("document", {}).get("inference", {}).get("prediction", {})
+
+        # Si es lista, iterar sobre los campos
+        if isinstance(prediction, list):
+            texto = "\n".join([f"{item.get('name')}: {item.get('value', '')}" for item in prediction])
+        elif isinstance(prediction, dict):
+            texto = "\n".join([f"{key}: {value.get('value', '')}" for key, value in prediction.items()])
+        else:
+            texto = "No se encontraron predicciones válidas."
+
         return texto
     except Exception as e:
         st.error(f"Error extrayendo texto: {e}")
         return ""
+
 
 # Extraer JSON desde respuesta de Gemini
 def extract_json_from_text(text):
