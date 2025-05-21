@@ -1,41 +1,53 @@
 import streamlit as st
+import requests
+import json
 from PIL import Image
-from datetime import datetime
-import pandas as pd
-import os
+import io
 from openai import OpenAI
+import os
+import pandas as pd
 
-# Configuración de la página
 st.set_page_config(page_title="Lector Inteligente de Facturas", layout="wide")
 
-# Clave API de OpenAI desde secretos
-os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
-
-# Instancia cliente OpenAI
+OCR_API_KEY = st.secrets["OCR_SPACE_KEY"]
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 client = OpenAI()
 
-st.title("📄 Lector Inteligente de Facturas")
-st.write("Subí una imagen de una factura para extraer los datos automáticamente.")
+st.title("📄 Lector Inteligente de Facturas usando OCR.space")
 
 uploaded_file = st.file_uploader("Subir factura (imagen)", type=["jpg", "jpeg", "png"])
+
+def ocr_space_api(image_bytes):
+    url_api = "https://api.ocr.space/parse/image"
+    payload = {
+        'apikey': OCR_API_KEY,
+        'language': 'spa',
+        'isOverlayRequired': False
+    }
+    files = {
+        'file': ('factura.png', image_bytes)
+    }
+    response = requests.post(url_api, data=payload, files=files)
+    result = response.json()
+    if result.get("IsErroredOnProcessing"):
+        st.error("Error en OCR.space: " + result.get("ErrorMessage", ["Error desconocido"])[0])
+        return ""
+    return result["ParsedResults"][0]["ParsedText"]
 
 if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption="Factura subida", use_container_width=True)
 
-    # Usamos pytesseract para OCR si lo querés seguir usando:
-    import pytesseract
-    pytesseract.pytesseract.tesseract_cmd = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+    with st.spinner("Extrayendo texto con OCR.space..."):
+        img_bytes = uploaded_file.read()
+        text = ocr_space_api(img_bytes)
 
-    with st.spinner("Procesando imagen con OCR..."):
-        text = pytesseract.image_to_string(image)
+    if text:
+        st.text_area("Texto extraído por OCR.space", text, height=300)
 
-    # Mostrar texto extraído (debug)
-    if st.checkbox("Mostrar texto completo extraído (OCR)"):
-        st.text_area("Texto extraído:", text, height=300)
-
-    # Preparar prompt para OpenAI GPT
-    prompt = f"""Sos un asistente que analiza texto OCR de facturas. A partir del siguiente texto extraído:
+        with st.spinner("Interpretando datos con GPT..."):
+            prompt = f"""Sos un asistente que analiza texto OCR de facturas. A partir del siguiente texto extraído:
 {text}
 
 Extraé los siguientes datos clave en formato JSON:
@@ -48,33 +60,25 @@ Extraé los siguientes datos clave en formato JSON:
 
 Solo devolvé un JSON válido con los datos."""
 
-    with st.spinner("Interpretando datos con GPT..."):
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Sos un lector experto de facturas."},
-                {"role": "user", "content": prompt}
-            ]
-        )
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Sos un lector experto de facturas."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            output = response.choices[0].message.content
 
-        output = response.choices[0].message.content
+        st.subheader("📌 Datos extraídos por GPT")
+        st.code(output, language="json")
 
-    st.subheader("📌 Datos extraídos por GPT")
-    st.code(output, language="json")
+        try:
+            data_json = json.loads(output)
+            df = pd.DataFrame([data_json])
+            st.dataframe(df)
 
-    # Convertir JSON a DataFrame para mostrar y descargar
-    try:
-        import json
-        data_json = json.loads(output)
+            csv = df.to_csv(index=False).encode("utf-8")
+            st.download_button("💾 Descargar CSV", data=csv, file_name="factura_extraida.csv", mime="text/csv")
+        except Exception as e:
+            st.error(f"No se pudo procesar el JSON: {e}")
 
-        df = pd.DataFrame([data_json])
-        st.dataframe(df)
-
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button("💾 Descargar CSV", data=csv, file_name="factura_extraida.csv", mime="text/csv")
-    except Exception as e:
-        st.error(f"No se pudo procesar el JSON: {e}")
-
-
-    st.subheader("📌 Datos extraídos por GPT")
-    st.code(output, language="json")
