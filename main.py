@@ -23,7 +23,7 @@ uploaded_file = st.file_uploader("Subir factura (imagen)", type=["jpg", "jpeg", 
 
 # 🧠 Función para usar Mindee OCR
 def mindee_ocr_api(image_bytes):
-    url = "https://api.mindee.net/v1/products/mindee/invoice/v1/predict"
+    url = "https://api.mindee.net/v1/products/mindee/invoices/v4/predict"
     headers = {
         "Authorization": f"Token {MINDEE_API_KEY}"
     }
