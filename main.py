@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import json
 from PIL import Image
-import io
 import os
 import pandas as pd
 import google.generativeai as genai  # Gemini
@@ -15,7 +14,7 @@ GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
 # 📡 Configurar Gemini
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel("gemini-pro")
+model = genai.GenerativeModel("models/gemini-pro")
 
 st.title("📄 Lector Inteligente de Facturas usando OCR.space + Gemini")
 
@@ -39,7 +38,7 @@ def ocr_space_api(image_bytes):
         return ""
     return result["ParsedResults"][0]["ParsedText"]
 
-
+# 📷 Procesamiento de la imagen
 if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption="Factura subida", use_container_width=True)
@@ -70,11 +69,10 @@ Solo devolvé un JSON válido con los datos."""
                 response = model.generate_content(
                     contents=[{"role": "user", "parts": [prompt]}]
                 )
-                 output = response.text
+                output = response.text
             except Exception as e:
-                 st.error(f"Error al procesar con Gemini: {e}")
+                st.error(f"Error al procesar con Gemini: {e}")
                 output = ""
-
 
         if output:
             st.subheader("📌 Datos extraídos por Gemini")
