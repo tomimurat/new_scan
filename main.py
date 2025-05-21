@@ -4,7 +4,8 @@ import json
 from PIL import Image
 import pandas as pd
 import re
-import io  # Para el buffer de Excel
+import io
+from datetime import datetime  # Para calcular días de vencimiento
 import google.generativeai as genai  # Gemini
 
 st.set_page_config(page_title="Lector Inteligente de Facturas", layout="wide")
@@ -21,6 +22,7 @@ st.title("📄 Lector Inteligente de Facturas usando OCR.space + Gemini")
 
 uploaded_file = st.file_uploader("Subir factura (imagen)", type=["jpg", "jpeg", "png"])
 
+# 🔍 Función para hacer OCR
 def ocr_space_api(image_bytes):
     url_api = "https://api.ocr.space/parse/image"
     payload = {
@@ -38,14 +40,15 @@ def ocr_space_api(image_bytes):
         return ""
     return result["ParsedResults"][0]["ParsedText"]
 
+# 🔧 Extrae JSON del texto
 def extract_json_from_text(text):
     try:
-        # Extrae el primer bloque JSON encontrado en el texto (entre llaves)
         json_str = re.search(r"\{.*\}", text, re.DOTALL).group(0)
         return json_str
     except Exception:
         return None
 
+# 🖼️ Si el usuario sube una imagen
 if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption="Factura subida", use_container_width=True)
@@ -68,7 +71,6 @@ Extraé los siguientes datos clave en formato JSON válido, sin ningún texto ad
 - Fecha de compra (dd/mm/aaaa)
 - Fecha de vencimiento (si existe)
 - Sucursal (si aparece)
-- Días restantes hasta el vencimiento (si hay fecha)
 
 Responde solo con el JSON válido correspondiente."""
 
@@ -89,10 +91,38 @@ Responde solo con el JSON válido correspondiente."""
             if json_text:
                 try:
                     data_json = json.loads(json_text)
-                    df = pd.DataFrame([data_json])
-                    st.dataframe(df)
 
-                    # Generar Excel en memoria
+                    # 🧠 Cálculo de días restantes hasta el vencimiento
+                    fecha_vencimiento_str = data_json.get("Fecha de vencimiento")
+                    if fecha_vencimiento_str:
+                        try:
+                            vencimiento = datetime.strptime(fecha_vencimiento_str, "%d/%m/%Y")
+                            hoy = datetime.now()
+                            dias_restantes = (vencimiento - hoy).days
+                            data_json["Días restantes hasta el vencimiento"] = dias_restantes
+                        except Exception as e:
+                            st.warning(f"No se pudo calcular la diferencia de días: {e}")
+                            data_json["Días restantes hasta el vencimiento"] = "Error"
+                    else:
+                        data_json["Días restantes hasta el vencimiento"] = "No especificado"
+
+                    # 📊 Mostrar en tabla con estilo
+                    df = pd.DataFrame([data_json])
+
+                    def resaltar_dias(val):
+                        if isinstance(val, int):
+                            if val < 0:
+                                return "background-color: #ffcccc; color: red;"  # vencido
+                            elif val <= 3:
+                                return "background-color: #fff3cd; color: #856404;"  # cerca de vencer
+                            else:
+                                return "background-color: #d4edda; color: #155724;"  # todo ok
+                        return ""
+
+                    st.subheader("📋 Datos estructurados")
+                    st.dataframe(df.style.applymap(resaltar_dias, subset=["Días restantes hasta el vencimiento"]))
+
+                    # 📁 Exportar Excel
                     output_stream = io.BytesIO()
                     df.to_excel(output_stream, index=False, engine='openpyxl')
                     output_stream.seek(0)
@@ -103,6 +133,7 @@ Responde solo con el JSON válido correspondiente."""
                         file_name="factura_extraida.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
+
                 except Exception as e:
                     st.error(f"No se pudo procesar el JSON: {e}")
             else:
