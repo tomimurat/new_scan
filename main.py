@@ -50,7 +50,7 @@ Extraé los siguientes datos clave en formato JSON:
 - Sucursal (si aparece)
 - Días restantes hasta el vencimiento (si hay fecha)
 
-Solo devolvé un JSON válido con los datos.\""\""
+Solo devolvé un JSON válido con los datos."""
 
         response = openai.ChatCompletion.create(
             model="gpt-4",
