@@ -3,21 +3,25 @@ import requests
 import json
 from PIL import Image
 import io
-from openai import OpenAI
 import os
 import pandas as pd
+import google.generativeai as genai  # Gemini
 
 st.set_page_config(page_title="Lector Inteligente de Facturas", layout="wide")
 
+# 🔑 API Keys desde secrets.toml
 OCR_API_KEY = st.secrets["OCR_SPACE_KEY"]
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
-client = OpenAI(api_key=OPENAI_API_KEY)
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
-st.title("📄 Lector Inteligente de Facturas usando OCR.space")
+# 📡 Configurar Gemini
+genai.configure(api_key=GOOGLE_API_KEY)
+model = genai.GenerativeModel("gemini-pro")
+
+st.title("📄 Lector Inteligente de Facturas usando OCR.space + Gemini")
 
 uploaded_file = st.file_uploader("Subir factura (imagen)", type=["jpg", "jpeg", "png"])
 
+# 🧠 Función para usar OCR.space
 def ocr_space_api(image_bytes):
     url_api = "https://api.ocr.space/parse/image"
     payload = {
@@ -40,16 +44,15 @@ if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption="Factura subida", use_container_width=True)
 
-    uploaded_file_bytes = uploaded_file.getvalue()  # <-- Aquí está la clave
+    uploaded_file_bytes = uploaded_file.getvalue()
 
     with st.spinner("Extrayendo texto con OCR.space..."):
         text = ocr_space_api(uploaded_file_bytes)
 
-
     if text:
         st.text_area("Texto extraído por OCR.space", text, height=300)
 
-        with st.spinner("Interpretando datos con GPT..."):
+        with st.spinner("Interpretando datos con Gemini..."):
             prompt = f"""Sos un asistente que analiza texto OCR de facturas. A partir del siguiente texto extraído:
 {text}
 
@@ -63,25 +66,24 @@ Extraé los siguientes datos clave en formato JSON:
 
 Solo devolvé un JSON válido con los datos."""
 
-            response = client.chat.completions.create(
-                model="gpt-3.5",
-                messages=[
-                    {"role": "system", "content": "Sos un lector experto de facturas."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            output = response.choices[0].message.content
+            try:
+                response = model.generate_content(prompt)
+                output = response.text
+            except Exception as e:
+                st.error(f"Error al procesar con Gemini: {e}")
+                output = ""
 
-        st.subheader("📌 Datos extraídos por GPT")
-        st.code(output, language="json")
+        if output:
+            st.subheader("📌 Datos extraídos por Gemini")
+            st.code(output, language="json")
 
-        try:
-            data_json = json.loads(output)
-            df = pd.DataFrame([data_json])
-            st.dataframe(df)
+            try:
+                data_json = json.loads(output)
+                df = pd.DataFrame([data_json])
+                st.dataframe(df)
 
-            csv = df.to_csv(index=False).encode("utf-8")
-            st.download_button("💾 Descargar CSV", data=csv, file_name="factura_extraida.csv", mime="text/csv")
-        except Exception as e:
-            st.error(f"No se pudo procesar el JSON: {e}")
+                csv = df.to_csv(index=False).encode("utf-8")
+                st.download_button("💾 Descargar CSV", data=csv, file_name="factura_extraida.csv", mime="text/csv")
+            except Exception as e:
+                st.error(f"No se pudo procesar el JSON: {e}")
 
