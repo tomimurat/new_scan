@@ -39,7 +39,7 @@ if uploaded_file:
 
     # Llamado a OpenAI para interpretar texto
     with st.spinner("Interpretando datos con GPT..."):
-        prompt = f\"""Sos un asistente que analiza texto OCR de facturas. A partir del siguiente texto extraído:
+        prompt = f"""Sos un asistente que analiza texto OCR de facturas. A partir del siguiente texto extraído:
 {text}
 
 Extraé los siguientes datos clave en formato JSON:
