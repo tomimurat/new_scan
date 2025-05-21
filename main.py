@@ -67,13 +67,13 @@ Extraé los siguientes datos clave en formato JSON:
 Solo devolvé un JSON válido con los datos."""
 
             try:
-            response = model.generate_content(
-            contents=[{"role": "user", "parts": [prompt]}]
-            )
-             output = response.text
+                response = model.generate_content(
+                    contents=[{"role": "user", "parts": [prompt]}]
+                )
+                 output = response.text
             except Exception as e:
-             st.error(f"Error al procesar con Gemini: {e}")
-            output = ""
+                 st.error(f"Error al procesar con Gemini: {e}")
+                output = ""
 
 
         if output:
