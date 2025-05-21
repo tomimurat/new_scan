@@ -34,22 +34,21 @@ def mindee_ocr_api(image_bytes):
     response = requests.post(url, headers=headers, files=files)
     
     try:
-        result = response.json()
+        result = response.json()  # ⬅️ ya es un dict
     except Exception:
         st.error("❌ No se pudo interpretar la respuesta de Mindee.")
-        return ""
+        return None
 
     if response.status_code != 201:
         mensaje_error = result.get('api_request', {}).get('error', {}).get('message', 'Error desconocido')
         st.error(f"❌ Error en Mindee OCR: {mensaje_error}")
-        return ""
+        return None
     
-    return json.dumps(result, indent=2)
+    return result  # ⬅️ devolvemos dict
 
-# ✅ Función corregida
-def extract_text_from_mindee_response(response_json):
+# ✅ Función para extraer texto de la respuesta
+def extract_text_from_mindee_response(data):
     try:
-        data = json.loads(response_json)
         prediction = data.get("document", {}).get("inference", {}).get("prediction")
 
         if isinstance(prediction, list):
@@ -84,10 +83,14 @@ if uploaded_file:
     uploaded_file_bytes = uploaded_file.getvalue()
 
     with st.spinner("🧠 Extrayendo texto con Mindee..."):
-        ocr_response = mindee_ocr_api(uploaded_file_bytes)
-        text = extract_text_from_mindee_response(ocr_response)
+        ocr_result = mindee_ocr_api(uploaded_file_bytes)
 
-    if text:
+    if ocr_result:
+        # ✅ Mostrar JSON crudo
+        st.subheader("🔍 Respuesta JSON completa de Mindee")
+        st.json(ocr_result)
+
+        text = extract_text_from_mindee_response(ocr_result)
         st.text_area("🧾 Texto estructurado por Mindee", text, height=300)
 
         with st.spinner("🤖 Interpretando datos con Gemini..."):
