@@ -23,6 +23,7 @@ uploaded_file = st.file_uploader("Subir factura (imagen)", type=["jpg", "jpeg", 
 
 # 🧠 Función para usar Mindee OCR
 def mindee_ocr_api(image_bytes):
+    # ⚠️ URL personalizada: asegurate de reemplazar "mindee" por tu organización si usás otra
     url = "https://api.mindee.net/v1/products/mindee/invoices/v4/predict"
     headers = {
         "Authorization": f"Token {MINDEE_API_KEY}"
@@ -30,11 +31,19 @@ def mindee_ocr_api(image_bytes):
     files = {
         "document": ("factura.jpg", image_bytes)
     }
+
     response = requests.post(url, headers=headers, files=files)
-    if response.status_code != 201:
-        st.error(f"Error en Mindee OCR: {response.text}")
+    
+    try:
+        result = response.json()
+    except Exception:
+        st.error("❌ No se pudo interpretar la respuesta de Mindee.")
         return ""
-    result = response.json()
+
+    if response.status_code != 201:
+        st.error(f"❌ Error en Mindee OCR: {result.get('api_request', {}).get('error', {}).get('message', 'Error desconocido')}")
+        return ""
+    
     return json.dumps(result, indent=2)
 
 # Extraer texto plano desde JSON de Mindee
@@ -62,14 +71,14 @@ if uploaded_file:
 
     uploaded_file_bytes = uploaded_file.getvalue()
 
-    with st.spinner("Extrayendo texto con Mindee..."):
+    with st.spinner("🧠 Extrayendo texto con Mindee..."):
         ocr_response = mindee_ocr_api(uploaded_file_bytes)
         text = extract_text_from_mindee_response(ocr_response)
 
     if text:
-        st.text_area("Texto estructurado por Mindee", text, height=300)
+        st.text_area("🧾 Texto estructurado por Mindee", text, height=300)
 
-        with st.spinner("Interpretando datos con Gemini..."):
+        with st.spinner("🤖 Interpretando datos con Gemini..."):
             prompt = f"""Sos un asistente que analiza texto OCR de facturas. A partir del siguiente texto extraído:
 {text}
 
@@ -89,7 +98,7 @@ Solo devolvé el JSON válido, sin explicaciones."""
                 )
                 output = response.text
             except Exception as e:
-                st.error(f"Error al procesar con Gemini: {e}")
+                st.error(f"❌ Error al procesar con Gemini: {e}")
                 output = ""
 
         if output:
@@ -114,8 +123,8 @@ Solo devolvé el JSON válido, sin explicaciones."""
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
                 except Exception as e:
-                    st.error(f"No se pudo procesar el JSON: {e}")
+                    st.error(f"⚠️ No se pudo procesar el JSON: {e}")
             else:
-                st.error("No se encontró un JSON válido en la respuesta.")
+                st.error("⚠️ No se encontró un JSON válido en la respuesta.")
 
 
