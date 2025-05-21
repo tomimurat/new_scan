@@ -23,7 +23,6 @@ uploaded_file = st.file_uploader("Subir factura (imagen)", type=["jpg", "jpeg", 
 
 # 🧠 Función para usar Mindee OCR
 def mindee_ocr_api(image_bytes):
-    # ⚠️ URL personalizada: asegurate de reemplazar "mindee" por tu organización si usás otra
     url = "https://api.mindee.net/v1/products/mindee/invoices/v4/predict"
     headers = {
         "Authorization": f"Token {MINDEE_API_KEY}"
@@ -41,30 +40,33 @@ def mindee_ocr_api(image_bytes):
         return ""
 
     if response.status_code != 201:
-        st.error(f"❌ Error en Mindee OCR: {result.get('api_request', {}).get('error', {}).get('message', 'Error desconocido')}")
+        mensaje_error = result.get('api_request', {}).get('error', {}).get('message', 'Error desconocido')
+        st.error(f"❌ Error en Mindee OCR: {mensaje_error}")
         return ""
     
     return json.dumps(result, indent=2)
 
-# Extraer texto plano desde JSON de Mindee
+# ✅ Función corregida
 def extract_text_from_mindee_response(response_json):
     try:
         data = json.loads(response_json)
-        prediction = data.get("document", {}).get("inference", {}).get("prediction", {})
+        prediction = data.get("document", {}).get("inference", {}).get("prediction")
 
-        # Si es lista, iterar sobre los campos
         if isinstance(prediction, list):
-            texto = "\n".join([f"{item.get('name')}: {item.get('value', '')}" for item in prediction])
+            texto = "\n".join(
+                [f"{item.get('name', 'Campo desconocido')}: {item.get('value', '')}" for item in prediction]
+            )
         elif isinstance(prediction, dict):
-            texto = "\n".join([f"{key}: {value.get('value', '')}" for key, value in prediction.items()])
+            texto = "\n".join(
+                [f"{key}: {value.get('value', '')}" for key, value in prediction.items()]
+            )
         else:
-            texto = "No se encontraron predicciones válidas."
+            texto = "❌ No se encontraron predicciones válidas."
 
         return texto
     except Exception as e:
         st.error(f"Error extrayendo texto: {e}")
         return ""
-
 
 # Extraer JSON desde respuesta de Gemini
 def extract_json_from_text(text):
@@ -74,6 +76,7 @@ def extract_json_from_text(text):
     except Exception:
         return None
 
+# 🚀 FLUJO PRINCIPAL
 if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption="Factura subida", use_container_width=True)
@@ -122,12 +125,12 @@ Solo devolvé el JSON válido, sin explicaciones."""
                     st.dataframe(df)
 
                     # Descargar como Excel
-                    output = BytesIO()
-                    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                    output_xlsx = BytesIO()
+                    with pd.ExcelWriter(output_xlsx, engine="xlsxwriter") as writer:
                         df.to_excel(writer, index=False, sheet_name="Factura")
                     st.download_button(
                         label="💾 Descargar XLSX",
-                        data=output.getvalue(),
+                        data=output_xlsx.getvalue(),
                         file_name="factura_extraida.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
