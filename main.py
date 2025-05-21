@@ -68,6 +68,7 @@ if uploaded_file:
 Extraé los siguientes datos clave en formato JSON válido, sin ningún texto adicional ni explicación, exactamente así:
 - Proveedor
 - Monto total
+- Número de factura (suele aparecer debajo de la misma en caso de no estar al lado)
 - Fecha de compra (dd/mm/aaaa)
 - Fecha de vencimiento (si existe)
 - Sucursal (si aparece)
