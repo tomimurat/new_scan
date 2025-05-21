@@ -64,7 +64,7 @@ Extraé los siguientes datos clave en formato JSON:
 Solo devolvé un JSON válido con los datos."""
 
             response = client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-3.5",
                 messages=[
                     {"role": "system", "content": "Sos un lector experto de facturas."},
                     {"role": "user", "content": prompt}
