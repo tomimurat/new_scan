@@ -4,6 +4,7 @@ import json
 from PIL import Image
 import pandas as pd
 import re
+import io  # Para el buffer de Excel
 import google.generativeai as genai  # Gemini
 
 st.set_page_config(page_title="Lector Inteligente de Facturas", layout="wide")
@@ -91,8 +92,17 @@ Responde solo con el JSON válido correspondiente."""
                     df = pd.DataFrame([data_json])
                     st.dataframe(df)
 
-                    csv = df.to_csv(index=False).encode("utf-8")
-                    st.download_button("💾 Descargar CSV", data=csv, file_name="factura_extraida.csv", mime="text/csv")
+                    # Generar Excel en memoria
+                    output_stream = io.BytesIO()
+                    df.to_excel(output_stream, index=False, engine='openpyxl')
+                    output_stream.seek(0)
+
+                    st.download_button(
+                        label="💾 Descargar Excel",
+                        data=output_stream,
+                        file_name="factura_extraida.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
                 except Exception as e:
                     st.error(f"No se pudo procesar el JSON: {e}")
             else:
