@@ -35,13 +35,16 @@ def ocr_space_api(image_bytes):
         return ""
     return result["ParsedResults"][0]["ParsedText"]
 
+
 if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption="Factura subida", use_container_width=True)
 
+    uploaded_file_bytes = uploaded_file.getvalue()  # <-- Aquí está la clave
+
     with st.spinner("Extrayendo texto con OCR.space..."):
-        img_bytes = uploaded_file.read()
-        text = ocr_space_api(img_bytes)
+        text = ocr_space_api(uploaded_file_bytes)
+
 
     if text:
         st.text_area("Texto extraído por OCR.space", text, height=300)
