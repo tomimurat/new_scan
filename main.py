@@ -3,7 +3,6 @@ import requests
 import json
 from PIL import Image
 import pandas as pd
-import re
 import google.generativeai as genai  # Gemini
 
 st.set_page_config(page_title="Lector Inteligente de Facturas", layout="wide")
@@ -20,6 +19,7 @@ st.title("📄 Lector Inteligente de Facturas usando OCR.space + Gemini")
 
 uploaded_file = st.file_uploader("Subir factura (imagen)", type=["jpg", "jpeg", "png"])
 
+# 🧠 Función para usar OCR.space
 def ocr_space_api(image_bytes):
     url_api = "https://api.ocr.space/parse/image"
     payload = {
@@ -37,14 +37,7 @@ def ocr_space_api(image_bytes):
         return ""
     return result["ParsedResults"][0]["ParsedText"]
 
-def extract_json_from_text(text):
-    try:
-        # Extrae el primer bloque JSON encontrado en el texto (entre llaves)
-        json_str = re.search(r"\{.*\}", text, re.DOTALL).group(0)
-        return json_str
-    except Exception:
-        return None
-
+# 📷 Procesamiento de la imagen
 if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption="Factura subida", use_container_width=True)
@@ -61,7 +54,7 @@ if uploaded_file:
             prompt = f"""Sos un asistente que analiza texto OCR de facturas. A partir del siguiente texto extraído:
 {text}
 
-Extraé los siguientes datos clave en formato JSON válido, sin ningún texto adicional ni explicación, exactamente así:
+Extraé los siguientes datos clave en formato JSON:
 - Proveedor
 - Monto total
 - Fecha de compra (dd/mm/aaaa)
@@ -69,7 +62,7 @@ Extraé los siguientes datos clave en formato JSON válido, sin ningún texto ad
 - Sucursal (si aparece)
 - Días restantes hasta el vencimiento (si hay fecha)
 
-Responde solo con el JSON válido correspondiente."""
+Solo devolvé un JSON válido con los datos."""
 
             try:
                 response = model.generate_content(
@@ -84,18 +77,20 @@ Responde solo con el JSON válido correspondiente."""
             st.subheader("📌 Datos extraídos por Gemini")
             st.code(output, language="json")
 
-            json_text = extract_json_from_text(output)
-            if json_text:
-                try:
-                    data_json = json.loads(json_text)
+            try:
+                data_json = json.loads(output.strip())  # Limpiar espacios extras
+                if not isinstance(data_json, dict):
+                    st.error("El formato de datos no es un JSON válido con objetos clave-valor.")
+                else:
                     df = pd.DataFrame([data_json])
                     st.dataframe(df)
 
-                    csv = df.to_csv(index=False).encode("utf-8")
+                    # Exportar CSV con separador punto y coma para compatibilidad Excel
+                    csv = df.to_csv(index=False, sep=";", encoding="utf-8")
                     st.download_button("💾 Descargar CSV", data=csv, file_name="factura_extraida.csv", mime="text/csv")
-                except Exception as e:
-                    st.error(f"No se pudo procesar el JSON: {e}")
-            else:
-                st.error("No se encontró un JSON válido en la respuesta.")
+
+            except Exception as e:
+                st.error(f"No se pudo procesar el JSON: {e}")
+
 
 
