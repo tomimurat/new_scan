@@ -65,8 +65,6 @@ def extract_text_from_mindee_response(response_json):
         st.error(f"Error extrayendo texto: {e}")
         return ""
 
-st.subheader("🔍 JSON completo de Mindee (debug)")
-st.json(result)
 
 # Extraer JSON desde respuesta de Gemini
 def extract_json_from_text(text):
