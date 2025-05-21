@@ -12,7 +12,7 @@ st.set_page_config(page_title="Lector Inteligente de Facturas", layout="wide")
 OCR_API_KEY = st.secrets["OCR_SPACE_KEY"]
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
-client = OpenAI()
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 st.title("📄 Lector Inteligente de Facturas usando OCR.space")
 
