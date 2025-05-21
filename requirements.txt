@@ -3,3 +3,4 @@ pillow
 pytesseract
 google-generativeai
 pandas
+openpyxl
