@@ -10,11 +10,11 @@ import google.generativeai as genai  # Gemini
 
 st.set_page_config(page_title="Lector Inteligente de Facturas", layout="wide")
 
-# 🔑 API Keys desde secrets.toml
+# secrets.toml
 OCR_API_KEY = st.secrets["OCR_SPACE_KEY"]
 GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
-# 📡 Configurar Gemini
+# Configurar Gemini
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel("models/gemini-1.5-flash-001")
 
@@ -22,7 +22,7 @@ st.title("📄 Lector Inteligente de Facturas usando OCR.space + Gemini")
 
 uploaded_file = st.file_uploader("Subir factura (imagen)", type=["jpg", "jpeg", "png"])
 
-# 🔍 Función para hacer OCR
+#  OCR
 def ocr_space_api(image_bytes):
     url_api = "https://api.ocr.space/parse/image"
     payload = {
@@ -40,7 +40,7 @@ def ocr_space_api(image_bytes):
         return ""
     return result["ParsedResults"][0]["ParsedText"]
 
-# 🔧 Extrae JSON del texto
+# JSON del texto
 def extract_json_from_text(text):
     try:
         json_str = re.search(r"\{.*\}", text, re.DOTALL).group(0)
@@ -48,7 +48,7 @@ def extract_json_from_text(text):
     except Exception:
         return None
 
-# 🖼️ Si el usuario sube una imagen
+#imagen
 if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption="Factura subida", use_container_width=True)
@@ -93,7 +93,7 @@ Responde solo con el JSON válido correspondiente."""
                 try:
                     data_json = json.loads(json_text)
 
-                    # 🧠 Cálculo de días restantes hasta el vencimiento
+                    # días restantes hasta el vencimiento
                     fecha_vencimiento_str = data_json.get("Fecha de vencimiento")
                     if fecha_vencimiento_str:
                         try:
@@ -107,7 +107,7 @@ Responde solo con el JSON válido correspondiente."""
                     else:
                         data_json["Días restantes hasta el vencimiento"] = "No especificado"
 
-                    # 📊 Mostrar en tabla con estilo
+                    # Mostrar en tabla
                     df = pd.DataFrame([data_json])
 
                     def resaltar_dias(val):
@@ -123,7 +123,7 @@ Responde solo con el JSON válido correspondiente."""
                     st.subheader("📋 Datos estructurados")
                     st.dataframe(df.style.applymap(resaltar_dias, subset=["Días restantes hasta el vencimiento"]))
 
-                    # 📁 Exportar Excel
+                    #  Exportar Excel
                     output_stream = io.BytesIO()
                     df.to_excel(output_stream, index=False, engine='openpyxl')
                     output_stream.seek(0)
